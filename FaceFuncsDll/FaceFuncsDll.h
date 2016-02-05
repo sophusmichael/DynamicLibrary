@@ -9,6 +9,7 @@
 #include <sstream>
 #include <time.h>
 #include <Windows.h>
+#include <tuple>
 // Include OpenCV's C++ Interface
 #include "opencv2/opencv.hpp"
 
@@ -20,6 +21,7 @@ using namespace std;
 #else
 #define FACEFUNCSDLL_API __declspec(dllimport) 
 #endif
+
 
 namespace FaceFuncs
 {
@@ -35,6 +37,11 @@ namespace FaceFuncs
 
 		static FACEFUNCSDLL_API void read_csv(const string& filename, vector<Mat>& images, vector<int>& labels, vector<string>& names, char separator = ';');
 
-		static FACEFUNCSDLL_API cv::Point pointReturn(int saved_model);
+		// input frame should be a "pulled frame from video capture"
+		// j is a counter that should be incremented everytime there is a "unknown prediction"
+
+		static FACEFUNCSDLL_API tuple<cv::Point, int, string> pointReturn(int saved_model, Mat inputFrame, int j, string predictionName);
+
+		//we need to initiate j to 0 above function call
 	};
 }

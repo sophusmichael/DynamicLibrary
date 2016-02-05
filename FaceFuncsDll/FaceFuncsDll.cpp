@@ -8,6 +8,7 @@
 #include <sstream>
 #include <time.h>
 #include <Windows.h>
+#include <tuple>
 // Include OpenCV's C++ Interface
 #include "opencv2/opencv.hpp"
 
@@ -136,12 +137,13 @@ namespace FaceFuncs{
 		}
 	}
 
-	cv::Point pointReturn(int saved_model){
+	tuple<cv::Point, int, string> pointReturn(int saved_model, Mat inputFrame, int j){
+		string it;
 		int count = 0; //variable for timer
 		// Create a FaceRecognizer and train it on the given images:
 		Ptr<FaceRecognizer> model = createFisherFaceRecognizer(0, 1000);
 
-		VideoCapture cap0(0);
+
 		string fn_haar = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_default.xml";
 		string fn_left = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_mcs_lefteye.xml";
 		string fn_right = "C:\\opencv\\sources\\data\\haarcascades\\haarcascade_mcs_righteye.xml";
@@ -197,164 +199,154 @@ namespace FaceFuncs{
 		eyes_cascade_right.load(fn_right);
 		// Get a handle to the Video device:
 
-		int j = 0;
-
-		Mat frame;
-		for (;;) {
-
-			cap0 >> frame;
-			// Clone the current frame:
-			Mat original = frame.clone();
-			// Convert the current frame to grayscale:
-			Mat gray;
-			cvtColor(original, gray, CV_BGR2GRAY);
-			// Find the faces in the frame:
-			vector< Rect_<int> > faces;
-			haar_cascade.detectMultiScale(gray, faces);
 
 
-			for (int i = 0; i < faces.size(); i++) {
-				// Process face by face:
-				Rect face_i = faces[i];
-				// Crop the face from the image. So simple with OpenCV C++:
-				Mat face = gray(face_i);
-				Mat face_resized;
+
+		// Clone the current frame:
+		Mat original = inputFrame.clone();
+		// Convert the current frame to grayscale:
+		Mat gray;
+		cvtColor(original, gray, CV_BGR2GRAY);
+		// Find the faces in the frame:
+		vector< Rect_<int> > faces;
+		haar_cascade.detectMultiScale(gray, faces);
 
 
-				const float EYE_SX = 0.16f;
-				const float EYE_SY = 0.26f;
-				const float EYE_SW = 0.30f;
-				const float EYE_SH = 0.28f;
-				Point leftEye;
-				Point rightEye;
-
-				int leftX = cvRound(face.cols * EYE_SX);
-				int topY = cvRound(face.rows * EYE_SY);
-				int widthX = cvRound(face.cols * EYE_SW);
-				int heightY = cvRound(face.rows * EYE_SH);
-				int rightX = cvRound(face.cols * (1.0 - EYE_SX - EYE_SW));  // Start of right-eye corner
-
-				Mat topLeftOfFace = face(Rect(leftX, topY, widthX, heightY));
-				Mat topRightOfFace = face(Rect(rightX, topY, widthX, heightY));
-				Rect leftEyeRect, rightEyeRect;
-
-				detectLargestObject(topLeftOfFace, eyes_cascade_left, leftEyeRect, topLeftOfFace.cols);
-				detectLargestObject(topRightOfFace, eyes_cascade_right, rightEyeRect, topRightOfFace.cols);
-
-				if (leftEyeRect.width > 0) {   // Check if the eye was detected.
-					leftEyeRect.x += leftX;    // Adjust the left-eye rectangle because the face border was removed.
-					leftEyeRect.y += topY;
-					leftEye = Point(leftEyeRect.x + leftEyeRect.width / 2, leftEyeRect.y + leftEyeRect.height / 2);
-				}
-				else {
-					leftEye = Point(-1, -1);    // Return an invalid point
-				}
+		for (int i = 0; i < faces.size(); i++) {
+			// Process face by face:
+			Rect face_i = faces[i];
+			// Crop the face from the image. So simple with OpenCV C++:
+			Mat face = gray(face_i);
+			Mat face_resized;
 
 
-				if (rightEyeRect.width > 0) { // Check if the eye was detected.
-					rightEyeRect.x += rightX; // Adjust the right-eye rectangle, since it starts on the right side of the image.
-					rightEyeRect.y += topY;  // Adjust the right-eye rectangle because the face border was removed.
-					rightEye = Point(rightEyeRect.x + rightEyeRect.width / 2, rightEyeRect.y + rightEyeRect.height / 2);
-				}
-				else {
-					rightEye = Point(-1, -1);    // Return an invalid point
-				}
+			const float EYE_SX = 0.16f;
+			const float EYE_SY = 0.26f;
+			const float EYE_SW = 0.30f;
+			const float EYE_SH = 0.28f;
+			Point leftEye;
+			Point rightEye;
 
-				cout << leftEye;
+			int leftX = cvRound(face.cols * EYE_SX);
+			int topY = cvRound(face.rows * EYE_SY);
+			int widthX = cvRound(face.cols * EYE_SW);
+			int heightY = cvRound(face.rows * EYE_SH);
+			int rightX = cvRound(face.cols * (1.0 - EYE_SX - EYE_SW));  // Start of right-eye corner
 
-				//-- In each face, detect eyes
+			Mat topLeftOfFace = face(Rect(leftX, topY, widthX, heightY));
+			Mat topRightOfFace = face(Rect(rightX, topY, widthX, heightY));
+			Rect leftEyeRect, rightEyeRect;
 
-				cv::resize(face, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
-				// Now perform the prediction, see how easy that is:
+			detectLargestObject(topLeftOfFace, eyes_cascade_left, leftEyeRect, topLeftOfFace.cols);
+			detectLargestObject(topRightOfFace, eyes_cascade_right, rightEyeRect, topRightOfFace.cols);
 
-				//only gives prediction if there is an eye detection too!
+			if (leftEyeRect.width > 0) {   // Check if the eye was detected.
+				leftEyeRect.x += leftX;    // Adjust the left-eye rectangle because the face border was removed.
+				leftEyeRect.y += topY;
+				leftEye = Point(leftEyeRect.x + leftEyeRect.width / 2, leftEyeRect.y + leftEyeRect.height / 2);
+			}
+			else {
+				leftEye = Point(-1, -1);    // Return an invalid point
+			}
 
-				//int prediction = model->predict(face_resized);
-				int prediction = -1;
-				double predicted_confidence = 0.0;
-				// Get the prediction and associated confidence from the model
-				model->predict(face_resized, prediction, predicted_confidence);
-				cout << "prediction is" << prediction << "\n";
-				cout << "predicted confidence is" << predicted_confidence << "\n";
 
-				//here we will check to see if there is no good prediction than the face is unknown
-				//also check to make sure we detected an eye!
-				if (j < 20 && prediction == -1 && leftEye != Point(-1, -1) && rightEye != Point(-1, -1)){
-					//take 10 photos? what if there is an error with training on the person speaking?
-					stringstream ss;
-					ss << j + 1;
-					string index = ss.str();
-					String subject_name = "michael";
-					string image = "\\";
-					string jpg = ".jpg";
-					string directory = "C:\\Users\\michael\\Documents\\att\\";
-					string newdir = directory + subject_name;
+			if (rightEyeRect.width > 0) { // Check if the eye was detected.
+				rightEyeRect.x += rightX; // Adjust the right-eye rectangle, since it starts on the right side of the image.
+				rightEyeRect.y += topY;  // Adjust the right-eye rectangle because the face border was removed.
+				rightEye = Point(rightEyeRect.x + rightEyeRect.width / 2, rightEyeRect.y + rightEyeRect.height / 2);
+			}
+			else {
+				rightEye = Point(-1, -1);    // Return an invalid point
+			}
 
-					std::wstring stemp = s2ws(newdir);
-					LPCWSTR dirname = stemp.c_str();
-					CreateDirectory(dirname, NULL);
-					string savepath = directory + subject_name + image + index + jpg;
+			cout << leftEye;
 
-					imwrite(savepath, face_resized);
-					cout << j;
-					j++;
+			//-- In each face, detect eyes
 
-					images.push_back(face_resized);
-					labels.push_back(new_index);
-					names.push_back(subject_name);
+			cv::resize(face, face_resized, Size(im_width, im_height), 1.0, 1.0, INTER_CUBIC);
+			// Now perform the prediction, see how easy that is:
 
-					if (j == 19){
-						cout << "retraining \n";
-						model->train(images, labels);
-						model->save("C:\\Users\\michael\\Documents\\att\\saved.xml");
-						//we must update the map as well
-						for (int i = 0; i < labels.size(); i++){
-							int current_label = labels[i];
-							integer_to_name[current_label] = subject_name;
-						}
+			//only gives prediction if there is an eye detection too!
+
+			//int prediction = model->predict(face_resized);
+			int prediction = -1;
+			double predicted_confidence = 0.0;
+			// Get the prediction and associated confidence from the model
+			model->predict(face_resized, prediction, predicted_confidence);
+			cout << "prediction is" << prediction << "\n";
+			cout << "predicted confidence is" << predicted_confidence << "\n";
+
+			//here we will check to see if there is no good prediction than the face is unknown
+			//also check to make sure we detected an eye!
+			if (j < 20 && prediction == -1 && leftEye != Point(-1, -1) && rightEye != Point(-1, -1)){
+				//take 10 photos? what if there is an error with training on the person speaking?
+				stringstream ss;
+				ss << j + 1;
+				string index = ss.str();
+				String subject_name = "michael";
+				string image = "\\";
+				string jpg = ".jpg";
+				string directory = "C:\\Users\\michael\\Documents\\att\\";
+				string newdir = directory + subject_name;
+
+				std::wstring stemp = s2ws(newdir);
+				LPCWSTR dirname = stemp.c_str();
+				CreateDirectory(dirname, NULL);
+				string savepath = directory + subject_name + image + index + jpg;
+
+				imwrite(savepath, face_resized);
+				//cout << j;
+				j++;
+
+				images.push_back(face_resized);
+				labels.push_back(new_index);
+				names.push_back(subject_name);
+
+				if (j == 19){
+					cout << "retraining \n";
+					model->train(images, labels);
+					model->save("C:\\Users\\michael\\Documents\\att\\saved.xml");
+					//we must update the map as well
+					for (int i = 0; i < labels.size(); i++){
+						int current_label = labels[i];
+						integer_to_name[current_label] = subject_name;
 					}
-
 				}
-
-
-
-
-
-				// And finally write all we've found out to the original image!
-				// First of all draw a green rectangle around the detected face:
-				rectangle(original, face_i, CV_RGB(0, 255, 0), 1);
-				// Create the text we will annotate the box with:
-
-				string it;
-				it = integer_to_name[prediction];
-				if (prediction == -1){
-					it = "unknown";
-				}
-				cout << it << "\n";
-				string box_text = "Prediction = " + it;
-				//string box_text = format("Prediction = ", boxname);
-				// Calculate the position for annotated text (make sure we don't
-				// put illegal values in there):
-				int pos_x = std::max(face_i.tl().x - 10, 0);
-				int pos_y = std::max(face_i.tl().y - 10, 0);
-				// And now put it into the image:
-				CenterPoint = Point(pos_x, pos_y);
-				cout << "center point is: " << CenterPoint;
-				putText(original, box_text, Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
-
 
 			}
 
-			// Show the result:
-			imshow("face_recognizer", original);
-			// And display it:
-			char key = (char)waitKey(20);
-			// Exit this loop on escape:
-			if (key == 27)
-				break;
+
+
+
+
+			// And finally write all we've found out to the original image!
+			// First of all draw a green rectangle around the detected face:
+			rectangle(original, face_i, CV_RGB(0, 255, 0), 1);
+			// Create the text we will annotate the box with:
+
+
+			it = integer_to_name[prediction];
+			if (prediction == -1){
+				it = "unknown";
+			}
+			cout << it << "\n";
+			string box_text = "Prediction = " + it;
+			//string box_text = format("Prediction = ", boxname);
+			// Calculate the position for annotated text (make sure we don't
+			// put illegal values in there):
+			int pos_x = std::max(face_i.tl().x - 10, 0);
+			int pos_y = std::max(face_i.tl().y - 10, 0);
+			// And now put it into the image:
+			CenterPoint = Point(pos_x, pos_y);
+			cout << "center point is: " << CenterPoint;
+			putText(original, box_text, Point(pos_x, pos_y), FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0, 255, 0), 2.0);
+
+
 		}
 
-		return CenterPoint;
+
+		return make_tuple(CenterPoint, j, it);
+
 	}
 }
 
